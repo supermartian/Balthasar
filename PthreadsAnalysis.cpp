@@ -51,6 +51,9 @@ struct WrapPthreads : public FunctionPass {
         if (fun) {
             if ( fun->getName().find( "pthread_" ) == 0 && 
                  fun->getName().find( "pthread_mutexattr_" ) == std::string::npos &&
+                 fun->getName().find( "pthread_mutex_unlock" ) == std::string::npos &&
+                 fun->getName().find( "pthread_mutex_join" ) == std::string::npos &&
+                 fun->getName().find( "pthread_mutex_create" ) == std::string::npos &&
                  fun->getName().find( "pthread_mutex_init" ) == std::string::npos &&
                  fun->getName().find( "pthread_mutex_destroy" ) == std::string::npos &&
                  fun->getName().find( "pthread_attr_" ) == std::string::npos) {

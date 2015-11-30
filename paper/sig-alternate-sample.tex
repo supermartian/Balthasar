@@ -122,28 +122,14 @@ Yuzhong Wen\titlenote{}\\
 
 \maketitle
 \begin{abstract}
-This paper provides a sample of a \LaTeX\ document which conforms,
-somewhat loosely, to the formatting guidelines for
-ACM SIG Proceedings. It is an {\em alternate} style which produces
-a {\em tighter-looking} paper and was designed in response to
-concerns expressed, by authors, over page-budgets.
-It complements the document \textit{Author's (Alternate) Guide to
-Preparing ACM SIG Proceedings Using \LaTeX$2_\epsilon$\ and Bib\TeX}.
-This source file has been written with the intention of being
-compiled under \LaTeX$2_\epsilon$\ and BibTeX.
+The non-determinism execution order on multiprocessing system is a double-edge, while the maximum performance can be gained from this, the users and the developers are sometimes suffered from non-repeatable results for the same input. Especially for developers, debugging potential data races or threading related bugs in this case could be a disaster.
 
-The developers have tried to include every imaginable sort
-of ``bells and whistles", such as a subtitle, footnotes on
-title, subtitle and authors, as well as in the text, and
-every optional component (e.g. Acknowledgments, Additional
-Authors, Appendices), not to mention examples of
-equations, theorems, tables and figures.
+However with a deterministic system, it can be guaranteed that for a given input, a multi-threaded program is always executed in a same thread scheduling no matter how many times it runs. In this paper we present Melchior, a deterministic system that guarantees deterministic scheduling for a group of threads/processes. Melchior consists of a compiler part which instruments the program, a user-space utility to launch the deterministic namespace, and a patch to Linux kernel to control the scheduling inside the original Linux scheduler. The mission of Melchior is to control the sequence of inter-thread/process communication, in terms of share memory access and system calls. The compiler part is responsible for finding those communication parts and tags them, then the deterministic scheduler will enforce the sequence of executing those tagged area.
 
-To make best use of this sample document, run it through \LaTeX\
-and BibTeX, and compare this source code with the printed
-output produced by the dvi file. A compiled PDF version
-is available on the web page to help you with the
-`look and feel'.
+Melchior is implemented with a deterministic scheduling algorithm that is highly optimized for scalability, the runtime overhead with big number of threads (up to 64) is much less than any other existing deterministic systems. We evaluated the implementation with many parallel workloads, including pbzip2.
+
+We also showed that Melchior can also be used on replicated execution, with our micro-benchmarks. In those evaluations, both the primary and the replica can always produce same results with a given input.
+
 \end{abstract}
 
 
@@ -154,35 +140,39 @@ is available on the web page to help you with the
 %
 \begin{CCSXML}
 <ccs2012>
- <concept>
-  <concept_id>10010520.10010553.10010562</concept_id>
-  <concept_desc>Computer systems organization~Embedded systems</concept_desc>
-  <concept_significance>500</concept_significance>
- </concept>
- <concept>
-  <concept_id>10010520.10010575.10010755</concept_id>
-  <concept_desc>Computer systems organization~Redundancy</concept_desc>
-  <concept_significance>300</concept_significance>
- </concept>
- <concept>
-  <concept_id>10010520.10010553.10010554</concept_id>
-  <concept_desc>Computer systems organization~Robotics</concept_desc>
-  <concept_significance>100</concept_significance>
- </concept>
- <concept>
-  <concept_id>10003033.10003083.10003095</concept_id>
-  <concept_desc>Networks~Network reliability</concept_desc>
-  <concept_significance>100</concept_significance>
- </concept>
-</ccs2012>  
+<concept>
+<concept_id>10011007.10010940.10010941.10010949.10010957.10010688</concept_id>
+<concept_desc>Software and its engineering~Scheduling</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10011007.10010940.10010941.10010949.10010957.10010959</concept_id>
+<concept_desc>Software and its engineering~Multiprocessing / multiprogramming / multitasking</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10011007.10010940.10010941.10010949.10010957.10010963</concept_id>
+<concept_desc>Software and its engineering~Concurrency control</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10011007.10010940.10010941.10010949.10010957.10011678</concept_id>
+<concept_desc>Software and its engineering~Process synchronization</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10011007.10011006.10011041.10011048</concept_id>
+<concept_desc>Software and its engineering~Runtime environments</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+</ccs2012>
 \end{CCSXML}
 
-\ccsdesc[500]{Computer systems organization~Embedded systems}
-\ccsdesc[300]{Computer systems organization~Redundancy}
-\ccsdesc{Computer systems organization~Robotics}
-\ccsdesc[100]{Networks~Network reliability}
-
-
+\ccsdesc[500]{Software and its engineering~Scheduling}
+\ccsdesc[500]{Software and its engineering~Multiprocessing / multiprogramming / multitasking}
+\ccsdesc[500]{Software and its engineering~Concurrency control}
+\ccsdesc[500]{Software and its engineering~Process synchronization}
+\ccsdesc[500]{Software and its engineering~Runtime environments}
 %
 % End generated code
 %
@@ -195,7 +185,7 @@ is available on the web page to help you with the
 % We no longer use \terms command
 %\terms{Theory}
 
-\keywords{ACM proceedings; \LaTeX; text tagging}
+\keywords{Deterministic Multithreading; Multicore; Determinism}
 
 \section{Introduction}
 The \textit{proceedings} are the records of a conference.

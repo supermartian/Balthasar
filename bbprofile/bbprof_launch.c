@@ -24,6 +24,7 @@ int main(int argc, char **argv) {
 	char **argvx;
 	pid_t c_pid, pid;
 	int status;
+	int i;
 
 	// There we are going to write the profiling data into this shared memory space
 	shm_fd = shm_open(shm_path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
@@ -56,5 +57,11 @@ int main(int argc, char **argv) {
 		}
 
 		printf("Profile run finished\n");
+
+		for (i = 0; i < SHM_SIZE; i++) {
+			if (prof_obj_table[i].total != 0) {
+				printf("%d\n", prof_obj_table[i].total);
+			}
+		}
 	}
 }

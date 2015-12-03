@@ -16,8 +16,14 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/syscall.h>
 
 #include "bbprofile.h"
+
+pid_t gettid()
+{
+	return syscall(SYS_gettid);
+}
 
 int shm_fd = -1;
 char shm_path[] = "/bbprofile_shm";

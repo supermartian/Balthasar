@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
 
 		for (i = 0; i < SHM_SIZE; i++) {
 			if (prof_obj_table[i].total != 0) {
-				printf("%d\n", prof_obj_table[i].total);
+				printf("BB %d on thread %d, total %d\n", prof_obj_table[i].bbid, i & ~((~0)<<5), prof_obj_table[i].total);
 			}
 		}
 	}

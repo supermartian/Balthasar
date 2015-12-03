@@ -49,7 +49,7 @@ void bbprof_start(int bbid)
 	pid_t pid = gettid();
 
 	// Write the thing to the internal hash table
-	struct prof_obj *obj = &prof_obj_table[bbid << 7 | ((uint64_t)pid & ((~0) << 7))];
+	struct prof_obj *obj = &prof_obj_table[bbid << 5 | ((uint32_t)pid & ~((~0) << 5))];
 	obj->start = perf_counter();
 }
 
@@ -58,7 +58,8 @@ void bbprof_end(int bbid)
 	pid_t pid = gettid();
 
 	// Write the thing to the internal hash table
-	struct prof_obj *obj = &prof_obj_table[bbid << 7 | ((uint64_t)pid & ((~0) << 7))];
+	struct prof_obj *obj = &prof_obj_table[bbid << 5 | ((uint32_t)pid & ~((~0) << 5))];
 	obj->total += perf_counter() - obj->start;
+	obj->bbid = bbid;
 	obj->count ++;
 }

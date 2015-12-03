@@ -25,6 +25,7 @@ __inline__ uint64_t perf_counter(void)
 }
 
 struct prof_obj {
+	uint64_t bbid;
 	uint64_t start;
 	uint64_t count;
 	uint64_t total;

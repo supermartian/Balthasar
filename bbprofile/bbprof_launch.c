@@ -18,11 +18,37 @@
 
 int shm_fd = -1;
 char shm_path[] = "/bbprofile_shm";
+char bbinfo_file_path[] = "./bbinfo.dat";
 struct prof_obj *prof_obj_table;
+
+// Organize the thing in a better way
+void bb_postprocessing(uint64_t bbnum) {
+	int i;
+	int output_fd = open(bbinfo_file_path, O_WRONLY|O_CREAT, 0644);
+	struct bb_info *bb = malloc(bbnum * sizeof(struct bb_info));
+	memset(bb, 0, bbnum * sizeof(struct bb_info));
+
+	for (i = 0; i < SHM_SIZE; i++) {
+		if (prof_obj_table[i].total != 0) {
+			if (bb[prof_obj_table[i].bbid].total != 0) {
+				bb[prof_obj_table[i].bbid].is_parallel ++;
+			}
+			bb[prof_obj_table[i].bbid].total = prof_obj_table[i].total;
+		}
+	}
+
+	uint64_t out_buf[1] = {bbnum};
+	write(output_fd, out_buf, sizeof(uint64_t));
+	write(output_fd, bb, bbnum * sizeof(struct bb_info));
+	close(output_fd);
+
+	//free(bb);
+}
 
 int main(int argc, char **argv) {
 	char **argvx;
 	pid_t c_pid, pid;
+	uint64_t maxbb = 0;
 	int status;
 	int i;
 
@@ -60,8 +86,17 @@ int main(int argc, char **argv) {
 
 		for (i = 0; i < SHM_SIZE; i++) {
 			if (prof_obj_table[i].total != 0) {
-				printf("BB %d on thread %d, total %d\n", prof_obj_table[i].bbid, i & ~((~0)<<5), prof_obj_table[i].total);
+				if (maxbb < prof_obj_table[i].bbid) {
+					maxbb = prof_obj_table[i].bbid;
+				}
+
+				printf("BB %d on thread %d, total %d\n", prof_obj_table[i].bbid, i & ~((~0)<<5), (prof_obj_table[i].total/prof_obj_table[i].count) >> 8);
 			}
 		}
+
+		bb_postprocessing(maxbb);
 	}
+
+	printf("Now you should have all the info inside the SHM, run the LLVM NOW!\n");
+	return 0;
 }

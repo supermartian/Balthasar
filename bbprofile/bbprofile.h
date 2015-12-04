@@ -31,4 +31,9 @@ struct prof_obj {
 	uint64_t total;
 };
 
+struct bb_info {
+	uint64_t is_parallel;
+	uint64_t total;
+};
+
 #endif /* !BBPROFILE_H */

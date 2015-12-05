@@ -18,8 +18,10 @@
 #include "llvm/Transforms/Utils/ModuleUtils.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Debug.h"
+#include <fstream>
 
 #define DET_BB_THRESHOLD 4
+#define BB_INFO_FILE "./bbinfo.dat"
 
 using namespace llvm;
 
@@ -75,14 +77,30 @@ static RegisterPass<WrapPthreads> X("wrap-pthreads", "Instrument pthreads functi
 
 /*
  * Most BBs will end with __NR_syscall_det_tick
- *
+ * There we're gonna read the profile data
  */
 struct InsertDetTicks : public BasicBlockPass {
     static char ID; // Pass identification, replacement for typeid
     long BB_cnt;
+
+    struct bb_info {
+        uint64_t is_parallel;
+        uint64_t total;
+    };
+
+    struct bb_info *bb;
     InsertDetTicks() : BasicBlockPass(ID) {
+        // First you read the profile data
         BB_cnt = 0;
+
+        uint64_t cnt;
+        std::ifstream bbinfo_file(BB_INFO_FILE, std::ios::in | std::ios::binary);
+        bbinfo_file.read((char *)&cnt, sizeof(uint64_t));
+        errs() << "reading " << cnt << "\n";
+        bb = (struct bb_info *) malloc(sizeof(struct bb_info) * cnt);
+        bbinfo_file.read((char *)bb, sizeof(struct bb_info) * cnt);
     }
+
     bool runOnBasicBlock(BasicBlock &BB) {
         SmallVector<Instruction*, 8> Calls;
         // Skip those very small BBs, much heuristic, so random
@@ -95,28 +113,14 @@ struct InsertDetTicks : public BasicBlockPass {
             return false;
         }
 
-        if (BB.getTerminator() == nullptr) {
-            return false;
-        }
-
         BB_cnt ++;
-        errs() << "BB haha: " << BB.getName() << " " << BB_cnt << "\n";
         Function *DetFunc = cast<Function>(M->getOrInsertFunction("syscall", ftype));
         IRBuilder<> IRB(&BB.back());
 
-        for (auto &Inst : BB) {
-            if (isa<CallInst>(Inst) || isa<InvokeInst>(Inst)) {
-                Calls.push_back(&Inst);
-            }
+        errs() << "load me " << (bb[BB_cnt].total >> 8) << "\n";
+        if (bb[BB_cnt].total > 0 && bb[BB_cnt].is_parallel > 0) {
+            IRB.CreateCall(DetFunc, {IRB.getInt32(321), IRB.getInt64((bb[BB_cnt].total >> 20)/2000)});
         }
-
-        for (auto Inst : Calls) {
-            if (!Inst->isTerminator()) {
-                CallInst::Create(DetFunc, {IRB.getInt32(321), IRB.getInt64(10)})->insertAfter(Inst);
-            }
-        }
-
-        IRB.CreateCall(DetFunc, {IRB.getInt32(321), IRB.getInt64(BB.size() * 2)});
 
         return true;
     }
@@ -143,10 +147,6 @@ struct BBProfile : public BasicBlockPass {
 
         Module *M = BB.getModule();
         if (M == nullptr) {
-            return false;
-        }
-
-        if (BB.getTerminator() == nullptr) {
             return false;
         }
 

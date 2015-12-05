@@ -33,12 +33,11 @@ void bb_postprocessing(uint64_t bbnum) {
 			if (bb[prof_obj_table[i].bbid].total != 0) {
 				bb[prof_obj_table[i].bbid].is_parallel ++;
 			}
-			bb[prof_obj_table[i].bbid].total = prof_obj_table[i].total;
+			bb[prof_obj_table[i].bbid].total = prof_obj_table[i].total / prof_obj_table[i].count;
+			printf("out to file %d\n", bb[prof_obj_table[i].bbid].total);
 		}
 	}
 
-	uint64_t out_buf[1] = {bbnum};
-	write(output_fd, out_buf, sizeof(uint64_t));
 	write(output_fd, bb, bbnum * sizeof(struct bb_info));
 	close(output_fd);
 

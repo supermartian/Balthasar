@@ -81,23 +81,27 @@ static RegisterPass<WrapPthreads> X("wrap-pthreads", "Instrument pthreads functi
  */
 struct InsertDetTicks : public BasicBlockPass {
     static char ID; // Pass identification, replacement for typeid
-    long BB_cnt;
+    uint64_t BB_cnt;
+    uint64_t BB_prof_cnt;
 
     struct bb_info {
         uint64_t is_parallel;
         uint64_t total;
-    };
+    } __attribute__((packed));
 
     struct bb_info *bb;
     InsertDetTicks() : BasicBlockPass(ID) {
         // First you read the profile data
         BB_cnt = 0;
+        BB_prof_cnt = 0;
 
         uint64_t cnt;
         std::ifstream bbinfo_file(BB_INFO_FILE, std::ios::in | std::ios::binary);
         bbinfo_file.read((char *)&cnt, sizeof(uint64_t));
         errs() << "reading " << cnt << "\n";
+        BB_prof_cnt = cnt;
         bb = (struct bb_info *) malloc(sizeof(struct bb_info) * cnt);
+        memset(bb, 0, cnt * sizeof(struct bb_info));
         bbinfo_file.read((char *)bb, sizeof(struct bb_info) * cnt);
     }
 
@@ -114,12 +118,15 @@ struct InsertDetTicks : public BasicBlockPass {
         }
 
         BB_cnt ++;
+        if (BB_cnt >= BB_prof_cnt) {
+            return true;
+        }
         Function *DetFunc = cast<Function>(M->getOrInsertFunction("syscall", ftype));
         IRBuilder<> IRB(&BB.back());
 
-        errs() << "load me " << (bb[BB_cnt].total >> 8) << "\n";
         if (bb[BB_cnt].total > 0 && bb[BB_cnt].is_parallel > 0) {
-            IRB.CreateCall(DetFunc, {IRB.getInt32(321), IRB.getInt64((bb[BB_cnt].total >> 20)/2000)});
+            errs() << "load me " << (bb[BB_cnt].total) << "\n";
+            IRB.CreateCall(DetFunc, {IRB.getInt32(321), IRB.getInt64(bb[BB_cnt].total >> 3)});
         }
 
         return true;

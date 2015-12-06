@@ -24,6 +24,7 @@ struct prof_obj *prof_obj_table;
 // Organize the thing in a better way
 void bb_postprocessing(uint64_t bbnum) {
 	int i;
+	uint64_t bbcnt = 0;
 	int output_fd = open(bbinfo_file_path, O_WRONLY|O_CREAT, 0644);
 	struct bb_info *bb = malloc(bbnum * sizeof(struct bb_info));
 	memset(bb, 0, bbnum * sizeof(struct bb_info));
@@ -32,13 +33,16 @@ void bb_postprocessing(uint64_t bbnum) {
 		if (prof_obj_table[i].total != 0) {
 			if (bb[prof_obj_table[i].bbid].total != 0) {
 				bb[prof_obj_table[i].bbid].is_parallel ++;
+			} else {
+				bbcnt ++;
 			}
 			bb[prof_obj_table[i].bbid].total = prof_obj_table[i].total / prof_obj_table[i].count;
-			printf("out to file %d\n", bb[prof_obj_table[i].bbid].total);
+			printf("out to file %d %d\n", prof_obj_table[i].bbid, bb[prof_obj_table[i].bbid].total);
 		}
 	}
 
-	write(output_fd, bb, bbnum * sizeof(struct bb_info));
+	write(output_fd, (void *) &bbnum, sizeof(uint64_t));
+	write(output_fd, (void *) bb, bbnum * sizeof(struct bb_info));
 	close(output_fd);
 
 	//free(bb);
@@ -93,6 +97,7 @@ int main(int argc, char **argv) {
 			}
 		}
 
+		printf("max num of bb %d\n", maxbb);
 		bb_postprocessing(maxbb);
 	}
 

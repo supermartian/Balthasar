@@ -8,7 +8,7 @@
 #ifndef BBPROFILE_H
 #define BBPROFILE_H
 
-#define SHM_SIZE (65536*32)
+#define SHM_SIZE (65536*256)
 
 #include <unistd.h>
 #include <stdint.h>
@@ -34,6 +34,6 @@ struct prof_obj {
 struct bb_info {
 	uint64_t is_parallel;
 	uint64_t total;
-};
+} __attribute__((packed));
 
 #endif /* !BBPROFILE_H */

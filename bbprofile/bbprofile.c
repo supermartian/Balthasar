@@ -14,6 +14,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <assert.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
@@ -49,7 +50,7 @@ void bbprof_start(int bbid)
 	pid_t pid = gettid();
 
 	// Write the thing to the internal hash table
-	struct prof_obj *obj = &prof_obj_table[bbid << 5 | ((uint32_t)pid & ~((~0) << 5))];
+	struct prof_obj *obj = &prof_obj_table[bbid << 6 | ((uint32_t)pid & ~((~0) << 6))];
 	obj->start = perf_counter();
 }
 
@@ -58,7 +59,8 @@ void bbprof_end(int bbid)
 	pid_t pid = gettid();
 
 	// Write the thing to the internal hash table
-	struct prof_obj *obj = &prof_obj_table[bbid << 5 | ((uint32_t)pid & ~((~0) << 5))];
+	struct prof_obj *obj = &prof_obj_table[bbid << 6 | ((uint32_t)pid & ~((~0) << 6))];
+	assert(bbid << 6 | ((uint32_t)pid & ~((~0) << 6)) <= SHM_SIZE);
 	obj->total += perf_counter() - obj->start;
 	obj->bbid = bbid;
 	obj->count ++;

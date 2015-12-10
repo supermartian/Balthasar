@@ -2,6 +2,8 @@
 \usepackage{graphicx}
 \usepackage{listings}
 \usepackage{color}
+\usepackage{tikz}
+\usetikzlibrary{decorations.pathreplacing}
  
 \definecolor{codegreen}{rgb}{0,0.6,0}
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
@@ -162,10 +164,133 @@ This paper makes following contributions:
 
 \section{Deterministic Scheduling}
 \subsection{Deterministic Logical Time}
-Inspired by Kendo\cite{olszewski2009kendo} and Conversion\cite{merrifieldincreasing}, Melchior's maintains a "logical time" for each task inside the Melchior's runtime. Only the task holds the minimal logical time can have the token, if several tasks have the same logical time, the one who has the biggest PID number gets the token. As shown in Figure ~\ref{fig:p1-1}, the logical time increases by 1 when $syscall(\_\_NR\_det\_end)$ is called. Suppose the logical time for all the thread was 0 initially, after $syscall(\_\_NR\_det\_end)$ is called by a thread who has the token, its logical time will be 1. At this point the token will be released from this thread and will be handed over to another thread, the one who gets the token will be waken up from previous $syscall(\_\_NR\_det\_start)$ and proceeds to its deterministic area. In this algorithm, the logical time is increased deterministically, as a result, the token is passed in a deterministic way. We modelled a simple multi-producer-multi-consumer program along with this scheduling algorithm in TLA+. In the model,  consumers generate some output according to the item they get in parallel. With variants defined, we observed that the sequence of the consumers' output never changes. Which proves the correctness of this algorithm.
+Inspired by Kendo\cite{olszewski2009kendo} and Conversion\cite{merrifieldincreasing}, Melchior's maintains a "logical time" for each task inside the Melchior's runtime. Only the task holds the minimal logical time can have the token, if several tasks have the same logical time, the one who has the biggest PID number gets the token. As shown in Figure~\ref{fig:p1-1}, the logical time increases by 1 when $syscall(\_\_NR\_det\_end)$ is called. Suppose the logical time for all the thread was 0 initially, after $syscall(\_\_NR\_det\_end)$ is called by a thread who has the token, its logical time will be 1. At this point the token will be released from this thread and will be handed over to another thread, the one who gets the token will be waken up from previous $syscall(\_\_NR\_det\_start)$ and proceeds to its deterministic area. In this algorithm, the logical time is increased deterministically, as a result, the token is passed in a deterministic way. We modelled a simple multi-producer-multi-consumer program along with this scheduling algorithm in TLA+. In the model,  consumers generate some output according to the item they get in parallel. With variants defined, we observed that the sequence of the consumers' output never changes. Which proves the correctness of this algorithm.
 
-\subsection{Logical Time Imbalance}
+\subsection{Logical Time Imbalance} \label{imbalance}
 However, after this algorithm simply was implemented, we found that the program's performance doesn't scale as the thread count increases, in other words, the scalability was very bad. The root cause is that we only increase the logical time by 1 at $syscall(\_\_NR\_det\_end)$. With an example we show how this could break the scalability and how to mitigate this problem.
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+   \draw[thick] (0,4) --  (0,5); 
+   \draw[dotted] (0,4) --  (0,-1);
+   
+   \node[align=right] at (0,5.5) {producer};
+   \node[align=right] at (1,5) {produceItem};
+   \draw[thick] (-0.1,5) -- (0.1,5);
+   \node[align=right] at (1,4) {\_\_det\_start};
+   \draw[thick] (-0.1,4) -- (0.1,4);
+   \node[align=right] at (1,3.5) {mutex\_lock};
+   \draw[thick] (-0.1,3.5) -- (0.1,3.5);
+   \node[align=right] at (1,3) {\_\_det\_end};
+   \draw[thick] (-0.1,3) -- (0.1,3);
+   \node[align=right] at (1,2) {putItem};
+   \draw[thick] (-0.1,2) -- (0.1,2);
+   \node[align=right] at (1,1) {mutex\_unlock};
+   \draw[thick] (-0.1,1) -- (0.1,1);   
+   \node[align=right] at (0,-2) {Logical Time:3};
+   
+   \draw[thick] (3,0) --  (3,5); 
+   \draw[dotted] (3,0) --  (3,-1);
+   
+   \node[align=right] at (3,5.5) {consumer};
+   \node[align=right] at (4,5) {};
+   \draw[thick] (2.9,5) -- (3.1,5);
+   \node[align=right] at (4,4) {\_\_det\_start};
+   \draw[thick] (2.9,4) -- (3.1,4);
+   \node[align=right] at (4,3.5) {mutex\_lock};
+   \draw[thick] (2.9,3.5) -- (3.1,3.5);
+   \node[align=right] at (4,3) {\_\_det\_end};
+   \draw[thick] (2.9,3) -- (3.1,3);
+   \node[align=right] at (4,2) {getItem};
+   \draw[thick] (2.9,2) -- (3.1,2);
+   \node[align=right] at (4,1) {mutex\_unlock};
+   \draw[thick] (2.9,1) -- (3.1,1);
+   \node[align=right] at (4,0) {consumeItem};
+   \draw[thick] (2.9,0) -- (3.1,0);
+   \node[align=right] at (4,-2) {Logical Time:3};   
+\end{tikzpicture}
+\caption{An example of logical time imbalance. In this case the consumer has the token and already released the mutex, however consumeItem is taking too much time before it reaches \_\_det\_end again. At this time producer has to wait until consumeItem is finished and logical time of consumer becomes 4.}
+\label{fig:p2-1}
+\end{figure}
+
+In Figure~\ref{fig:p2-1}, we show a particular execution point of the producer-consumer model that corresponds to the program shown in Figure~\ref{fig:p1-1}. In this case, consumer reaches consumeItem with logical time 3 and has the token. Assume the real execution time of consumeItem is 10s, which means that the next time the consumer reaches \_\_det\_end would be at least 10s later, before that consumer will hold the token. Which means the producer has to wait at \_\_det\_start for at least 10s. However we've already enforces the access order of the mutex, the execution out of the critical section should go in parallel since threads don't communicate at that part, this waiting time is totally unnecessary. In a more complex application with more synchronization, this kind of waiting will break a parallel program into a ser\subsection{Logical Time Imbalance}ial program.
+
+From this case, we can make a conclusion: the logical time should precisely reflect the progress of the thread, only increasing the logical time by 1 at the end of synchronization is not enough. For this purpose, we add another system call just for adding logical time to the runtime. In Figure~\ref{fig:p2-2} we show that by increasing the logical time according to the execution time of consumeItem, the producer can proceed. Since this happens out of the deterministic area, as long as the logical time is increased in a deterministic manner, it won't break the determinism.
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+   \draw[thick] (0,4) --  (0,5); 
+   \draw[dotted] (0,4) -- (0,-1);
+   
+   \node[align=right] at (0,5.5) {producer};
+   \node[align=right] at (1,5) {produceItem};
+   \draw[thick] (-0.1,5) -- (0.1,5);
+   \node[align=right] at (1,4) {\_\_det\_start};
+   \draw[thick] (-0.1,4) -- (0.1,4);
+   \node[align=right] at (1,3.5) {mutex\_lock};
+   \draw[thick] (-0.1,3.5) -- (0.1,3.5);
+   \node[align=right] at (1,3) {\_\_det\_end};
+   \draw[thick] (-0.1,3) -- (0.1,3);
+   \node[align=right] at (1,2) {putItem};
+   \draw[thick] (-0.1,2) -- (0.1,2);
+   \node[align=right] at (1,1) {mutex\_unlock};
+   \draw[thick] (-0.1,1) -- (0.1,1);   
+   \node[align=right] at (0,-2) {Logical Time:3};
+   
+   \draw[thick] (3,0) --  (3,5); 
+   \draw[dotted] (3,0) --  (3,-1);
+   
+   \node[align=right] at (3,5.5) {consumer};
+   \node[align=right] at (4,5) {};
+   \draw[thick] (2.9,5) -- (3.1,5);
+   \node[align=right] at (4,4) {\_\_det\_start};
+   \draw[thick] (2.9,4) -- (3.1,4);
+   \node[align=right] at (4,3.5) {mutex\_lock};
+   \draw[thick] (2.9,3.5) -- (3.1,3.5);
+   \node[align=right] at (4,3) {\_\_det\_end};
+   \draw[thick] (2.9,3) -- (3.1,3);
+   \node[align=right] at (4,2) {getItem};
+   \draw[thick] (2.9,2) -- (3.1,2);
+   \node[align=right] at (4,1) {mutex\_unlock};
+   \draw[thick] (2.9,1) -- (3.1,1);
+   \node[align=right] at (4,0.5) {\_\_det\_tick\(10\)};
+   \draw[thick] (2.9,0.5) -- (3.1,0.5);   
+   \node[align=right] at (4,0) {consumeItem};
+   \draw[thick] (2.9,0) -- (3.1,0);
+   \node[align=right] at (4,-2) {Logical Time:13};   
+\end{tikzpicture}
+\caption{A solution for the logical time imbalance. Here we add the logical time of consumer by 10 before it reaches consumeItem, so that the producer can proceed without waiting for the consumer.}
+\label{fig:p2-2}
+\end{figure}
+
+\section{Melchior}
+In this section we present the detail design of Melchior. Melchior's runtime provides 2 system calls to define a deterministic area and 1 system call to bump the logical time. Melchior's compiler framework automatically instrument a program's so that every pthread synchronization is wrapped to be a deterministic area, and it can also find the best place and value to bump the logical time, achieving maximum scalability.
+
+\subsection{Linux-Based Runtime Implementation}
+The runtime is implemented purely in Linux kernel version 3.2.14. In order to not mess up some other running tasks in the OS, Melchior comes with a Linux namespace. Only the processes inside this namespace will affected by the deterministic scheduler. The namespace maintains a list of all the running tasks inside it, the list is ordered by PID.
+
+Once the \_\_det\_start is called by a thread, the kernel will mark this thread as in a deterministic area, and check if the thread has the token, otherwise it removes the thread out of the current CPU run queue. When \_\_det\_end is called, the logical time will be increased by 1 and mark this thread as not in a deterministic area. Every time the logical time is updated, the runtime will put the token to the one that has the minimal logical time. If the thread that has the token is sleeping due to waiting on a token, the kernel will wake it up and put it back to the CPU run queue.
+
+\subsection{LLVM-Based Compiler Framework}
+\subsubsection{Pthread Annotation Pass}
+This pass is very straightforward, it analysis the program's source code and puts \_\_det\_start and \_det\_end around the pthread sychronizations. With this pass all the pthread-based program can be made into deterministic-ready automatically. However a programmer can also manually put those two system calls into a program that has different threading model, even applicable for fork-based multi-process programs.
+
+\subsubsection{Profile Pass}
+As mentioned in Section ~\ref{imbalance}, we need to bump the logical time at certain places of the program, and it has to reflect the actual execution time of the program. In order to get the execution time of each section of a program, we make a profile pass to collect the execution time of each basic block, and then output the profile result to a file.
+
+\subsubsection{Logical Time Pass}
+After the program finished one profile run with the instrumentation of profile pass, the profiler will generate a file that encodes the execution time of each basic block. The logical time pass will take the profile data file as input, and compile the program again. This time at the end of each basic block, a \_\_det\_tick will be inserted with the parameter of the execution time of the current basic block.
+
+\section{Evaluation}
+The goal of our evaluation is to evaluate both the performance and correctness of our system. The evaluation was done on a server with 4 AMD Opteron 6376 processors, 64 cores in total, which is sufficient for the scalability evaluation.
+
+\subsection{Correctness}
+We evaluated Melchior with a variant of racey~\cite{hillstress}, which protects the shared memory access with mutexes. In our test, racey produces the same result for 2000 runs. And with some manually annotation work, two variants of racey that are implemented with fork instead of pthread, also passed the test for 2000 runs.
+
+\subsection{Performance}
+The workload we chose is pbzip2. It utilizes a typical producer-consumer model with selectable numbers of threads which is perfectly suitable for testing the scalability of our system.
 
 
 

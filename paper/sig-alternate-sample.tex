@@ -3,6 +3,7 @@
 \usepackage{listings}
 \usepackage{color}
 \usepackage{tikz}
+\graphicspath{ {./} }
 \usetikzlibrary{decorations.pathreplacing}
  
 \definecolor{codegreen}{rgb}{0,0.6,0}
@@ -49,9 +50,6 @@ The non-determinism execution order on multiprocessing system is a double-edge, 
 However with a deterministic system, it can be guaranteed that for a given input, a multi-threaded program is always executed in a same thread scheduling no matter how many times it runs. In this paper we present Melchior, a deterministic system that guarantees deterministic scheduling for a group of threads/processes. Melchior consists of a compiler part which instruments the program, a user-space utility to launch the deterministic namespace, and a patch to Linux kernel to control the scheduling inside the original Linux scheduler. The goal of Melchior is to control the sequence of inter-thread/process communication, in terms of thread synchronization, share memory access and system calls.
 
 In this paper we also discussed the scalability of a deterministic system, and with Melchior's compiler support, we are able to mitigate this problem and achieve a relatively high scalability, the runtime overhead with big number of threads (up to 64) is much less than most existing deterministic systems. Among all the system level deterministic systems, Melchior is the fastest. We evaluated the implementation with a traditional parallel workload, pbzip2.
-
-We also showed that Melchior can also be used on replicated execution, with our micro-benchmarks. In those evaluations, both the primary and the replica can always produce same results with a given input.
-
 \end{abstract}
 
 
@@ -152,6 +150,12 @@ void consumer() {
 \subsection{Related Work}
 Deterministic systems have been studied for a long time. From the implementation perspective view, they can be categorized into 4 different genres: language level, runtime level, OS level and architectural level.
 
+Clik++~\cite{leiserson2010cilk++} is an parallel extension to C++ which makes creating parallel program easier. This extension provides a property that can indicate threads to be executed in a serial way, so that the determinism can be ensured. Grace \cite{berger2009grace} is also a C++ extension that adds a fork-join parallel schema to C++, it enforces the determinism of the execution with its underlying language runtime. Both of them are very limited to a specific parallel programming model, and existing applications need to be rewritten to achieve determinism.
+
+Kendo\cite{olszewski2009kendo}, Parrot\cite{cui2013parrot} and Dthreads\cite{liu2011dthreads} provide runtime substitutions for pthread library. By making pthread synchronizations to be deterministic, any race-free pthread-based application can be executed in a deterministic way. They are easy to be applied onto existing applications. However they are limited to pthread only applications. Although Melchior can only make pthread to run deterministically in an automatically way, a developer is always free to use the runtime system calls to hand tune any type of parallel applications to make them deterministic. Among these three, Kendo uses the same deterministic scheduling policy as Melchior. However it relies on hardware counters to keep track of the program's progress in runtime, given the fact that hardware counters could be non-deterministic\cite{weaver2008can}, we doubt the determinism  of Kendo in some cases. DMP\cite{devietti2009dmp} provides an OS layer to make any program running on top of it deterministic, which is applicable for all kinds of parallel programming models. However DMP's overhead is too high due to massive trapping to shared memory accesses. We synchronization provided by the programming model, this could be unnecessary.
+
+In \cite{segulja2012architectural}, an architectural solution is proposed. It's a hardware layer between the CPU core and memory hierarchy, the goal is to track all the memory access and does versioning on the memory operations. By doing deterministic submission to the memory hierarchy, it ensures the determinism of the parallel execution. Although it's a promising solution which is totally transparent to the upper layer, it's not usable out of box in recent years. 
+
 \subsection{Contribution}
 This paper makes following contributions:
 
@@ -214,7 +218,7 @@ However, after this algorithm simply was implemented, we found that the program'
 \label{fig:p2-1}
 \end{figure}
 
-In Figure~\ref{fig:p2-1}, we show a particular execution point of the producer-consumer model that corresponds to the program shown in Figure~\ref{fig:p1-1}. In this case, consumer reaches consumeItem with logical time 3 and has the token. Assume the real execution time of consumeItem is 10s, which means that the next time the consumer reaches \_\_det\_end would be at least 10s later, before that consumer will hold the token. Which means the producer has to wait at \_\_det\_start for at least 10s. However we've already enforces the access order of the mutex, the execution out of the critical section should go in parallel since threads don't communicate at that part, this waiting time is totally unnecessary. In a more complex application with more synchronization, this kind of waiting will break a parallel program into a ser\subsection{Logical Time Imbalance}ial program.
+In Figure~\ref{fig:p2-1}, we show a particular execution point of the producer-consumer model that corresponds to the program shown in Figure~\ref{fig:p1-1}. In this case, consumer reaches consumeItem with logical time 3 and has the token. Assume the real execution time of consumeItem is 10s, which means that when the consumer reaches \_\_det\_end, it would be at least 10s later, that is, the producer has to wait at \_\_det\_start for at least 10s. However we've already enforces the access order of the mutex, the execution out of the critical section should go in parallel since threads don't communicate at that part, this waiting time is totally unnecessary. In a more complex application with more synchronization, this kind of waiting will break a parallel program into a serial program.
 
 From this case, we can make a conclusion: the logical time should precisely reflect the progress of the thread, only increasing the logical time by 1 at the end of synchronization is not enough. For this purpose, we add another system call just for adding logical time to the runtime. In Figure~\ref{fig:p2-2} we show that by increasing the logical time according to the execution time of consumeItem, the producer can proceed. Since this happens out of the deterministic area, as long as the logical time is increased in a deterministic manner, it won't break the determinism.
 
@@ -280,8 +284,28 @@ This pass is very straightforward, it analysis the program's source code and put
 \subsubsection{Profile Pass}
 As mentioned in Section ~\ref{imbalance}, we need to bump the logical time at certain places of the program, and it has to reflect the actual execution time of the program. In order to get the execution time of each section of a program, we make a profile pass to collect the execution time of each basic block, and then output the profile result to a file.
 
+
+\begin{figure}
+\centering
+\begin{lstlisting}[frame=single,breaklines=true]
+  %bufSize24 = getelementptr inbounds %struct.outBuff, %struct.outBuff* %35, i32 0, i32 1
+  %36 = load i32, i32* %bufSize24, align 4
+  %37 = load i32, i32* @_ZL12BWTblockSize, align 4
+  %38 = load i32, i32* @_ZL9Verbosity, align 4
+  %call25 = call i32 @BZ2_bzBuffToBuffCompress(i8* %32, i32* %outSize, i8* %34, i32 %36, i32 %37, i32 %38, i32 30)
+  store i32 %call25, i32* %ret, align 4
+  %39 = load i32, i32* %ret, align 4
+  %cmp26 = icmp ne i32 %39, 0
+  %40 = call i32 (...) @syscall(i32 321, i64 2895535)
+  br i1 %cmp26, label %if.then.27, label %if.end.29
+
+\end{lstlisting}
+\caption{An instrumented basic block in pbzip2. This is a part of the consumer of pbzip2, here it takes an input file block and compress the content. According to previous recorded data this part should be time consuming, therefore a system call is inserted to bump the logical time of this thread at line 10.}
+\label{fig:p3-1}
+\end{figure}
+bzBuffToBuffCompress
 \subsubsection{Logical Time Pass}
-After the program finished one profile run with the instrumentation of profile pass, the profiler will generate a file that encodes the execution time of each basic block. The logical time pass will take the profile data file as input, and compile the program again. This time at the end of each basic block, a \_\_det\_tick will be inserted with the parameter of the execution time of the current basic block.
+After the program finished one profile run with the instrumentation of profile pass, the profiler will generate a file that encodes the execution time of each basic block. The logical time pass will take the profile data file as input, and compile the program again. This time at the end of each basic block, a \_\_det\_tick will be inserted with the parameter of a scaled execution time of the current basic block. So that the logical time will be bumped at the end of each basic block according to the actual execution time of each basic block. Figure~\ref{fig:p3-1} shows an example of instrument basic block in LLVM-IR. Since the value of logical time bumping is determined during the compilation time and won't change , the runtime binary is sure to be deterministic.
 
 \section{Evaluation}
 The goal of our evaluation is to evaluate both the performance and correctness of our system. The evaluation was done on a server with 4 AMD Opteron 6376 processors, 64 cores in total, which is sufficient for the scalability evaluation.
@@ -290,9 +314,23 @@ The goal of our evaluation is to evaluate both the performance and correctness o
 We evaluated Melchior with a variant of racey~\cite{hillstress}, which protects the shared memory access with mutexes. In our test, racey produces the same result for 2000 runs. And with some manually annotation work, two variants of racey that are implemented with fork instead of pthread, also passed the test for 2000 runs.
 
 \subsection{Performance}
-The workload we chose is pbzip2. It utilizes a typical producer-consumer model with selectable numbers of threads which is perfectly suitable for testing the scalability of our system.
+The workload we chose is pbzip2~\cite{gilchrist2004parallel}. It utilizes a typical producer-consumer model with selectable numbers of threads which is perfectly suitable for testing the scalability of our system. We compress a 177MB file with different number of threads. The block size for pbzip2 is set to be 15MB. 
 
+Without logical time balancing involved, we didn't see any scalability. Regardless the number of threads, the deterministic execution always performs as the performance of one single thread.
 
+Figure~\ref{fig:p4-1} shows the result with logical time balancing. The scalability is pretty well with our instrumentation. The overhead of the runs varies from 17\% to 170\%, which is reasonable for a deterministic system. In DMP~\cite{devietti2009dmp} it was shown that the overhead of pbzip2 is 3x under 8 threads, while in Parrot~\cite{cui2013parrot} their overhead is under 50\%. Melchior is the 2nd fastest by far.
+
+\begin{figure}
+\centering
+\includegraphics[scale=0.4]{pbzip}
+\caption{Performance benchmark for pbzip2. Red line is Melchior, blue line is non-deterministic run. With logical time balancing, the scalability is almost close to the non-deterministic run.}
+\label{fig:p4-1}
+\end{figure}
+
+\section{Conclusion and Future Work}
+We present Melchior, a runtime plus compiler framework based deterministic system. Melchior's runtime allows a programmer to handtune the program to be deterministic, while the compiler framework can automate this process for pthread based programs. Also we address the problem of the logical time imbalance and propose a compiler-based approach to mitigate the problem, where we achieved a relatively low overhead that is pretty much enough for a production system.
+
+As shown in the benchmark, we still have some space for improvement. One could be improve the logical time balancing in terms of position and value. The currently implementation is just heuristically add logical time bumping at the end of each basic block. This approach is not the best solution because: 1. The best place for inserting the logical time bumping should be before the instruction that is time consuming as shown in Figure~\ref{fig:p2-2}, bumping the logical time at the end of basic block works for pbzip2, but we are not sure if it also works for other programs. 2. Calling the logical time bumping system call too frequently may leads to some unnecessary overhead of context switch. We could develop an approach to minimize the number of calls by a better analysis of the execution time.
 
 \bibliographystyle{abbrv}
 \bibliography{sigproc}  % sigproc.bib is the name of the Bibliography

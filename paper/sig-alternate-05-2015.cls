@@ -118,7 +118,7 @@
 %%% You may turn this hackery off via the -e option:
 %%%     dvips -e 0 foo.dvi >foo.ps
 %%%
-\typeout{Document Class 'sig-alternate' <9th June '13>.  Modified by
+\typeout{Document Class 'sig-alternate-05-2015' <9th June '13>.  Modified by
   G.K.M. Tobin/Gerry Murray/Boris Veytsman}
 \typeout{Based in part upon document Style `acmconf' <22 May 89>. Hacked 4/91 by}
 \typeout{shivers@cs.cmu.edu, 4/93 by theobald@cs.mcgill.ca}
@@ -1628,28 +1628,6 @@
 \def\CopyrightYear#1{\global\copyrtyr{#1}}
 \def\crdata#1{\global\acmcopyr{#1}}
 \def\permission#1{\global\boilerplate{#1}}
-
-% ISBN
-%
-\def\isbn#1{\global\acmcopyr={#1}}
-\isbn{978-1-4503-2138-9}
-
-\RequirePackage{url}
-\urlstyle{rm}
-\def\doi#1{\def\@doi{#1}}
-\doi{10.1145/1235}
-\def\printdoi#1{\url{#1}}
-
-
-
-% Copyright
-\RequirePackage{acmcopyright}
-\setcopyright{none}
-
-%
-\global\boilerplate={\@copyrightpermission}
-
-
 
 \newtoks\copyrightetc
 \ifnum\ACM@basesize=9\relax

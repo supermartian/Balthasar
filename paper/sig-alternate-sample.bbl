@@ -1,0 +1,101 @@
+\begin{thebibliography}{10}
+
+\bibitem{aviram2012efficient}
+A.~Aviram, S.-C. Weng, S.~Hu, and B.~Ford.
+\newblock Efficient system-enforced deterministic parallelism.
+\newblock {\em Communications of the ACM}, 55(5).
+
+\bibitem{bergan2010coredet}
+T.~Bergan, O.~Anderson, J.~Devietti, L.~Ceze, and D.~Grossman.
+\newblock Coredet: a compiler and runtime system for deterministic
+  multithreaded execution.
+\newblock In {\em ACM SIGARCH Computer Architecture News}, volume~38, pages
+  53--64. ACM, 2010.
+
+\bibitem{berger2009grace}
+E.~D. Berger, T.~Yang, T.~Liu, and G.~Novark.
+\newblock Grace: Safe multithreaded programming for c/c++.
+\newblock In {\em ACM Sigplan Notices}, volume~44, pages 81--96. ACM, 2009.
+
+\bibitem{bocchino2009parallel}
+R.~Bocchino, V.~Adve, S.~Adve, and M.~Snir.
+\newblock Parallel programming must be deterministic by default.
+\newblock In {\em Proceedings of the First USENIX conference on Hot topics in
+  parallelism}, pages 4--4, 2009.
+
+\bibitem{bocchino2009type}
+R.~L. Bocchino~Jr, V.~S. Adve, D.~Dig, S.~V. Adve, S.~Heumann, R.~Komuravelli,
+  J.~Overbey, P.~Simmons, H.~Sung, and M.~Vakilian.
+\newblock A type and effect system for deterministic parallel java.
+\newblock {\em ACM Sigplan Notices}, 44(10):97--116, 2009.
+
+\bibitem{cui2013parrot}
+H.~Cui, J.~Simsa, Y.-H. Lin, H.~Li, B.~Blum, X.~Xu, J.~Yang, G.~A. Gibson, and
+  R.~E. Bryant.
+\newblock Parrot: A practical runtime for deterministic, stable, and reliable
+  threads.
+\newblock In {\em Proceedings of the Twenty-Fourth ACM Symposium on Operating
+  Systems Principles}.
+
+\bibitem{cui2010stable}
+H.~Cui, J.~Wu, C.-C. Tsai, and J.~Yang.
+\newblock Stable deterministic multithreading through schedule memoization.
+\newblock In {\em OSDI}, volume~10, page~10, 2010.
+
+\bibitem{devietti2009dmp}
+J.~Devietti, B.~Lucia, L.~Ceze, and M.~Oskin.
+\newblock Dmp: deterministic shared memory multiprocessing.
+\newblock In {\em ACM SIGARCH Computer Architecture News}, volume~37, pages
+  85--96. ACM, 2009.
+
+\bibitem{gilchrist2004parallel}
+J.~Gilchrist.
+\newblock Parallel data compression with bzip2.
+\newblock In {\em Proceedings of the 16th IASTED International Conference on
+  Parallel and Distributed Computing and Systems}, volume~16, pages 559--564,
+  2004.
+
+\bibitem{hillstress}
+M.~Hill and M.~X. Racey.
+\newblock A stress test for deterministic execution.
+
+\bibitem{leiserson2010cilk++}
+C.~E. Leiserson.
+\newblock The cilk++ concurrency platform.
+\newblock {\em The Journal of Supercomputing}, 51(3):244--257, 2010.
+
+\bibitem{liu2011dthreads}
+T.~Liu, C.~Curtsinger, and E.~D. Berger.
+\newblock Dthreads: efficient deterministic multithreading.
+\newblock In {\em Proceedings of the Twenty-Third ACM Symposium on Operating
+  Systems Principles}, pages 327--336. ACM, 2011.
+
+\bibitem{merrifieldincreasing}
+T.~Merrifield and J.~Eriksson.
+\newblock Increasing concurrency in deterministic runtimes with conversion.
+
+\bibitem{olszewski2009kendo}
+M.~Olszewski, J.~Ansel, and S.~Amarasinghe.
+\newblock Kendo: efficient deterministic multithreading in software.
+\newblock {\em ACM Sigplan Notices}, 44(3):97--108, 2009.
+
+\bibitem{segulja2012architectural}
+C.~Segulja and T.~S. Abdelrahman.
+\newblock Architectural support for synchronization-free deterministic parallel
+  programming.
+\newblock In {\em High Performance Computer Architecture (HPCA), 2012 IEEE 18th
+  International Symposium on}, pages 1--12. IEEE, 2012.
+
+\bibitem{veeraraghavan2012doubleplay}
+K.~Veeraraghavan, D.~Lee, B.~Wester, J.~Ouyang, P.~M. Chen, J.~Flinn, and
+  S.~Narayanasamy.
+\newblock Doubleplay: parallelizing sequential logging and replay.
+\newblock {\em ACM Transactions on Computer Systems (TOCS)}, 30(1):3, 2012.
+
+\bibitem{weaver2008can}
+V.~M. Weaver, S.~McKee, et~al.
+\newblock Can hardware performance counters be trusted?
+\newblock In {\em Workload Characterization, 2008. IISWC 2008. IEEE
+  International Symposium on}, pages 141--150. IEEE, 2008.
+
+\end{thebibliography}

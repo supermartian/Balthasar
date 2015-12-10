@@ -1,0 +1,58 @@
+This is BibTeX, Version 0.99d (TeX Live 2014/Debian)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: sig-alternate-sample.aux
+The style file: abbrv.bst
+Database file #1: sigproc.bib
+"{" immediately follows a field name---line 67 of file sigproc.bib
+ :   booktitle={Proceedings of the Twenty-Fourth ACM Symposium on Operating Systems Principles},\cite
+ :                                                                                                   {devietti2009dmp
+I'm skipping whatever remains of this entry
+Warning--empty year in aviram2012efficient
+Warning--can't use both volume and number fields in bergan2010coredet
+Warning--can't use both volume and number fields in berger2009grace
+Warning--empty year in cui2013parrot
+Warning--can't use both volume and number fields in devietti2009dmp
+Warning--empty journal in merrifieldincreasing
+Warning--empty year in merrifieldincreasing
+You've used 17 entries,
+            2118 wiz_defined-function locations,
+            589 strings with 6931 characters,
+and the built_in function-call counts, 7140 in all, are:
+= -- 685
+> -- 389
+< -- 14
++ -- 156
+- -- 136
+* -- 526
+:= -- 1135
+add.period$ -- 55
+call.type$ -- 17
+change.case$ -- 118
+chr.to.int$ -- 0
+cite$ -- 24
+duplicate$ -- 274
+empty$ -- 525
+format.name$ -- 136
+if$ -- 1519
+int.to.chr$ -- 0
+int.to.str$ -- 17
+missing$ -- 16
+newline$ -- 86
+num.names$ -- 34
+pop$ -- 144
+preamble$ -- 1
+purify$ -- 101
+quote$ -- 0
+skip$ -- 205
+stack$ -- 0
+substring$ -- 367
+swap$ -- 97
+text.length$ -- 14
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 68
+warning$ -- 7
+while$ -- 66
+width$ -- 19
+write$ -- 189
+(There was 1 error message)

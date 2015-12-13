@@ -18,6 +18,9 @@
 #include "llvm/Transforms/Utils/ModuleUtils.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+
 #include <fstream>
 
 #define DET_BB_THRESHOLD 4
@@ -51,10 +54,12 @@ struct WrapPthreads : public FunctionPass {
     void TransformPthreadPrimitive(Instruction *inst) {
         Function *fun = CallSite(inst).getCalledFunction();
         // Let's assume there's no indirect pthread_lock calls...
-        if (fun) {
+        if (fun != nullptr) {
             if ( fun->getName().find( "pthread_mutex_lock" ) != std::string::npos ||
                  fun->getName().find( "pthread_cond_broadcast" ) != std::string::npos ||
                  fun->getName().find( "pthread_cond_timedwait" ) != std::string::npos ||
+                 fun->getName().find( "pthread_cond_signal" ) != std::string::npos ||
+                 fun->getName().find( "pthread_barrier_wait" ) != std::string::npos ||
                  fun->getName().find( "pthread_cond_wait" ) != std::string::npos) {
                 Module *M = inst->getModule();
                 if (M == nullptr) {
@@ -63,7 +68,8 @@ struct WrapPthreads : public FunctionPass {
 
                 // Wrap the function around with 319 and 320
                 IRBuilder<> IRB(inst);
-                Function *DetFunc = cast<Function>(M->getOrInsertFunction("syscall", ftype));
+                FunctionType *dftype = FunctionType::get(Type::getInt32Ty(M->getContext()), true);
+                Function *DetFunc = cast<Function>(M->getOrInsertFunction("syscall", dftype));
                 CallInst::Create(DetFunc, {IRB.getInt32(319)})->insertBefore(inst);
                 CallInst::Create(DetFunc, {IRB.getInt32(320)})->insertAfter(inst);
             }
@@ -75,6 +81,10 @@ struct WrapPthreads : public FunctionPass {
 char WrapPthreads::ID = 0;
 static RegisterPass<WrapPthreads> X("wrap-pthreads", "Instrument pthreads functions with determinstic hints");
 
+static RegisterStandardPasses DetPassRegistration(PassManagerBuilder::EP_OptimizerLast,
+  [](const PassManagerBuilder&, legacy::PassManagerBase& PM) {
+    PM.add(new WrapPthreads());
+});
 /*
  * Most BBs will end with __NR_syscall_det_tick
  * There we're gonna read the profile data
@@ -106,7 +116,6 @@ struct InsertDetTicks : public BasicBlockPass {
     }
 
     bool runOnBasicBlock(BasicBlock &BB) {
-        SmallVector<Instruction*, 8> Calls;
         // Skip those very small BBs, much heuristic, so random
         if (BB.size() < DET_BB_THRESHOLD) {
             return false;
@@ -119,14 +128,15 @@ struct InsertDetTicks : public BasicBlockPass {
 
         BB_cnt ++;
         if (BB_cnt >= BB_prof_cnt) {
+            // It goes way beyond the profile data
             return true;
         }
         Function *DetFunc = cast<Function>(M->getOrInsertFunction("syscall", ftype));
         IRBuilder<> IRB(&BB.back());
 
-        if (bb[BB_cnt].total > 0 && bb[BB_cnt].is_parallel > 0) {
+        if (bb[BB_cnt].total > 0) {
             errs() << "load me " << (bb[BB_cnt].total) << "\n";
-            IRB.CreateCall(DetFunc, {IRB.getInt32(321), IRB.getInt64(bb[BB_cnt].total >> 3)});
+            IRB.CreateCall(DetFunc, {IRB.getInt32(321), IRB.getInt64(bb[BB_cnt].total >> 8)});
         }
 
         return true;

@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
 					maxbb = prof_obj_table[i].bbid;
 				}
 
-				printf("BB %d on thread %d, total %d\n", prof_obj_table[i].bbid, i & ~((~0)<<5), (prof_obj_table[i].total/prof_obj_table[i].count) >> 8);
+				printf("BB %d on thread %d, total %d\n", prof_obj_table[i].bbid, i & ~((~0)<<6), (prof_obj_table[i].total/prof_obj_table[i].count) >> 8);
 			}
 		}
 

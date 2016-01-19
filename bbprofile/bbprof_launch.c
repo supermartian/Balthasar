@@ -11,6 +11,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <signal.h>
 
 #include "bbprofile.h"
 
@@ -20,6 +21,12 @@ int shm_fd = -1;
 char shm_path[] = "/bbprofile_shm";
 char bbinfo_file_path[] = "./bbinfo.dat";
 struct prof_obj *prof_obj_table;
+int exit_flag;
+
+void signal_handler(int sig) {
+	printf("OMG!\n");
+	exit_flag = 1;
+}
 
 // Organize the thing in a better way
 void bb_postprocessing(uint64_t bbnum) {
@@ -55,6 +62,8 @@ int main(int argc, char **argv) {
 	int status;
 	int i;
 
+	exit_flag = 0;
+
 	// There we are going to write the profiling data into this shared memory space
 	shm_fd = shm_open(shm_path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
 	ftruncate(shm_fd, SHM_SIZE * sizeof(struct prof_obj));
@@ -80,9 +89,11 @@ int main(int argc, char **argv) {
 		execvp(argv[1], argvx);
 		perror("execve failed");
 	} else if (c_pid > 0) {
-		if ((pid = wait(&status)) < 0) {
-			perror("wait");
-			exit(1);
+		printf("Profiler is waiting...\n");
+		signal(SIGINT, signal_handler);
+
+		while (exit_flag == 0) {
+			sleep(1);
 		}
 
 		printf("Profile run finished\n");
@@ -99,6 +110,8 @@ int main(int argc, char **argv) {
 
 		printf("max num of bb %d\n", maxbb);
 		bb_postprocessing(maxbb);
+	} else {
+		printf("Excuse me %d?????\n", c_pid);
 	}
 
 	printf("Now you should have all the info inside the SHM, run the LLVM NOW!\n");

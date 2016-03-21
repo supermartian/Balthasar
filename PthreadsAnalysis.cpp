@@ -19,7 +19,9 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/CodeGen/RegAllocRegistry.h"
 
 #include <fstream>
 
@@ -28,7 +30,23 @@
 
 using namespace llvm;
 
-namespace {
+cl::OptionCategory BalthasarCategory("Balthasar Options", "Configure the deterministic instrumentation");
+
+static cl::opt<bool> OptWrapPthreads("wrap-pthreads",
+        cl::desc("Wrap pthread synchronization functions with deterministic hints"),
+        cl::Hidden,
+        cl::value_desc("Wrap pthread functions"),
+        cl::init(false),
+        cl::cat(BalthasarCategory));
+
+static cl::opt<bool> OptInsertTicks("insert-ticks",
+        cl::desc("Insert logical time ticks into each basic block"),
+        cl::Hidden,
+        cl::value_desc("Wrap pthread functions"),
+        cl::init(false),
+        cl::cat(BalthasarCategory));
+
+namespace balthasar {
 
 FunctionType *ftype = FunctionType::get(Type::getInt32Ty(getGlobalContext()), true);
 FunctionType *bbprof_ftype = FunctionType::get(Type::getInt32Ty(getGlobalContext()), Type::getInt32Ty(getGlobalContext()), true);
@@ -56,11 +74,11 @@ struct WrapPthreads : public FunctionPass {
         // Let's assume there's no indirect pthread_lock calls...
         if (fun != nullptr) {
             if ( fun->getName().find( "pthread_mutex_lock" ) != std::string::npos ||
-                 fun->getName().find( "pthread_cond_broadcast" ) != std::string::npos ||
-                 fun->getName().find( "pthread_cond_timedwait" ) != std::string::npos ||
-                 fun->getName().find( "pthread_cond_signal" ) != std::string::npos ||
-                 fun->getName().find( "pthread_barrier_wait" ) != std::string::npos ||
-                 fun->getName().find( "pthread_cond_wait" ) != std::string::npos) {
+                 fun->getName().find( "pthread_rwlock_rdlock" ) != std::string::npos ||
+                 fun->getName().find( "pthread_rwlock_tryrdlock" ) != std::string::npos ||
+                 fun->getName().find( "pthread_rwlock_wrlock" ) != std::string::npos ||
+                 fun->getName().find( "pthread_rwlock_trywrlock" ) != std::string::npos ||
+                 fun->getName().find( "pthread_mutex_trylock" ) != std::string::npos  ) {
                 Module *M = inst->getModule();
                 if (M == nullptr) {
                     return;
@@ -77,14 +95,8 @@ struct WrapPthreads : public FunctionPass {
     }
 };
 
+char WrapPthreads::ID = 1;
 
-char WrapPthreads::ID = 0;
-static RegisterPass<WrapPthreads> X("wrap-pthreads", "Instrument pthreads functions with determinstic hints");
-
-static RegisterStandardPasses DetPassRegistration(PassManagerBuilder::EP_OptimizerLast,
-  [](const PassManagerBuilder&, legacy::PassManagerBase& PM) {
-    PM.add(new WrapPthreads());
-});
 /*
  * Most BBs will end with __NR_syscall_det_tick
  * There we're gonna read the profile data
@@ -104,15 +116,6 @@ struct InsertDetTicks : public BasicBlockPass {
         // First you read the profile data
         BB_cnt = 0;
         BB_prof_cnt = 0;
-
-        uint64_t cnt;
-        std::ifstream bbinfo_file(BB_INFO_FILE, std::ios::in | std::ios::binary);
-        bbinfo_file.read((char *)&cnt, sizeof(uint64_t));
-        errs() << "reading " << cnt << "\n";
-        BB_prof_cnt = cnt;
-        bb = (struct bb_info *) malloc(sizeof(struct bb_info) * cnt);
-        memset(bb, 0, cnt * sizeof(struct bb_info));
-        bbinfo_file.read((char *)bb, sizeof(struct bb_info) * cnt);
     }
 
     bool runOnBasicBlock(BasicBlock &BB) {
@@ -136,7 +139,7 @@ struct InsertDetTicks : public BasicBlockPass {
 
         if (bb[BB_cnt].total > 0) {
             errs() << "load me " << (bb[BB_cnt].total) << "\n";
-            IRB.CreateCall(DetFunc, {IRB.getInt32(321), IRB.getInt64(bb[BB_cnt].total >> 8)});
+            IRB.CreateCall(DetFunc, {IRB.getInt32(321), 0});
         }
 
         return true;
@@ -144,7 +147,6 @@ struct InsertDetTicks : public BasicBlockPass {
 };
 
 char InsertDetTicks::ID = 1;
-static RegisterPass<InsertDetTicks> Y("insert-det-ticks", "Instrument code with determinstic ticks");
 
 /*
  * Most BBs will end with __NR_syscall_det_tick
@@ -183,6 +185,24 @@ struct BBProfile : public BasicBlockPass {
     }
 };
 
-char BBProfile::ID = 1;
-static RegisterPass<BBProfile> Z("bb-profile", "Instrument basic blocks with profiling hints");
+Pass *createWrapPthreadPass() { return new WrapPthreads(); }
+Pass *createInsertTicksPass() { return new InsertDetTicks(); }
+void registerBalthasarPasses(legacy::PassManagerBase &PM) {
+    errs() << "lol";
+    if (OptWrapPthreads)
+        PM.add(createWrapPthreadPass());
+
+    if (OptInsertTicks)
+        PM.add(createInsertTicksPass());
+}
+
+static void registerBalthasarAll(const PassManagerBuilder &Builder,
+        legacy::PassManagerBase &PM) {
+    errs() << "lol";
+    registerBalthasarPasses(PM);
+}
+
+static RegisterStandardPasses
+    RegisterBalthasarInstrumentation(PassManagerBuilder::EP_OptimizerLast,
+                        registerBalthasarAll);
 }

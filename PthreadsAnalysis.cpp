@@ -42,7 +42,7 @@ static cl::opt<bool> OptWrapPthreads("wrap-pthreads",
 static cl::opt<bool> OptInsertTicks("insert-ticks",
         cl::desc("Insert logical time ticks into each basic block"),
         cl::Hidden,
-        cl::value_desc("Wrap pthread functions"),
+        cl::value_desc("Insert logical time ticks into each basic block"),
         cl::init(false),
         cl::cat(BalthasarCategory));
 
@@ -125,21 +125,25 @@ struct InsertDetTicks : public BasicBlockPass {
         }
 
         Module *M = BB.getModule();
-        if (M == nullptr) {
+        if (M == nullptr ||
+                BB.getTerminator() == NULL) {
             return false;
         }
 
-        BB_cnt ++;
-        if (BB_cnt >= BB_prof_cnt) {
-            // It goes way beyond the profile data
-            return true;
-        }
-        Function *DetFunc = cast<Function>(M->getOrInsertFunction("syscall", ftype));
-        IRBuilder<> IRB(&BB.back());
+        FunctionType *tickftype = FunctionType::get(Type::getInt32Ty(BB.getContext()), true);
+        Function *DetFunc = cast<Function>(M->getOrInsertFunction("syscall", tickftype));
 
-        if (bb[BB_cnt].total > 0) {
-            errs() << "load me " << (bb[BB_cnt].total) << "\n";
-            IRB.CreateCall(DetFunc, {IRB.getInt32(321), 0});
+        errs() <<"lel\n";
+        IRBuilder<> IRB(&BB.front());
+
+        if (BB.getFirstNonPHI() != NULL &&
+                !BB.getFirstNonPHI()->isTerminator()) {
+            if (isa<LandingPadInst>(BB.getFirstNonPHI())) {
+                CallInst::Create(DetFunc, {IRB.getInt32(321), IRB.getInt32(0)})->insertAfter(BB.getFirstNonPHI());
+            } else {
+                CallInst::Create(DetFunc, {IRB.getInt32(321), IRB.getInt32(0)})->insertBefore(BB.getFirstNonPHI());
+            }
+            errs() << "Inserting tick on BB: " << BB.getName() << "\n";
         }
 
         return true;
@@ -188,7 +192,6 @@ struct BBProfile : public BasicBlockPass {
 Pass *createWrapPthreadPass() { return new WrapPthreads(); }
 Pass *createInsertTicksPass() { return new InsertDetTicks(); }
 void registerBalthasarPasses(legacy::PassManagerBase &PM) {
-    errs() << "lol";
     if (OptWrapPthreads)
         PM.add(createWrapPthreadPass());
 
@@ -198,7 +201,6 @@ void registerBalthasarPasses(legacy::PassManagerBase &PM) {
 
 static void registerBalthasarAll(const PassManagerBuilder &Builder,
         legacy::PassManagerBase &PM) {
-    errs() << "lol";
     registerBalthasarPasses(PM);
 }
 
